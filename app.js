@@ -50,80 +50,116 @@ const parseVerificationRequest = (bodyLines) => {
 const formatMessageByCourse = (courseCode, res) => {
   switch (courseCode) {
     case "BCOM3":
-      return `The provide data is matched with record. However please co-relate with details :
-
-                       ${res.CC}
---------------------------------------------------------------------------------
-Name: ${res.NM}                            En No.: ${res.EN}
-Father Name : ${res.GN}                    Roll No.  : ${res.RN}
-Mother Name : ${res.MN}
----------------------------------------------------------------------------------
-Subject                                                 Marks Obtain       
----------------------------------------------------------------------------------
-${res.SB1}                         ${res.M1}
-${res.SB2}                                          ${res.M2}
-${res.SB3}                        ${res.M3}
-${res.SB4}                                     ${res.M4}
-${res.SB5}        ${res.M5}
-${res.SB6}          ${res.M6}
----------------------------------------------------------------------------------
-Part-I:(${res.PM1})         Part-II:(${res.PM2})           Total : ${res.TOT}
----------------------------------------------------------------------------------
-Result  : ${res.RES}               Grand Total : ${res.GT}
-${res.SE}
-
-Thank you, for email and 
-Support ACC Team`;
+return `
+    <p>The record of ${res.NM} availiable with ACC is as follows:</p>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
+      <tr><th colspan="2">${res.CC},${res.YR}</th></tr>
+      <tr><td><strong>Name:</strong> ${res.NM}</td><td><strong>En No.:</strong> ${res.EN}</td></tr>
+      <tr><td><strong>Father Name:</strong> ${res.GN}</td><td><strong>Roll No.:</strong> ${res.RN}</td></tr>
+      <tr><td colspan="2"><strong>Mother Name:</strong> ${res.MN}</td></tr>
+      <tr><th>Subject</th><th>Marks Obtained</th></tr>
+      <tr><td>${res.SB1}</td><td>${res.M1}</td></tr>
+      <tr><td>${res.SB2}</td><td>${res.M2}</td></tr>
+      <tr><td>${res.SB3}</td><td>${res.M3}</td></tr>
+      <tr><td>${res.SB4}</td><td>${res.M4}</td></tr>
+      <tr><td>${res.SB5}</td><td>${res.M5}</td></tr>
+      <tr><td>${res.SB6}</td><td>${res.M6}</td></tr>
+      <tr><td><strong>Part-I:</strong> ${res.PM1}</td><td><strong>Part-II:</strong> ${res.PM2}</td></tr>
+      <tr><td><strong>Total:</strong> ${res.TOT}</td><td><strong>Result:</strong> ${res.RES}</td></tr>
+      <tr><td colspan="2"><strong>Grand Total:</strong> ${res.GT}</td></tr>
+      <tr><td colspan="2"><strong>Remarks:</strong> ${res.SE}</td></tr>
+    </table>
+     <p>This is for your kind information and further action at your end.</p>
+    <p>Thank you,<br>Support ACC Team</p>
+  `;
 
     case "BALLBH":
-      return `The provide data is matched with record. However please co-relate with details :
-
-                       ${res.MRK_HEAD}
-                             ${res.MRK_HEAD_2}, ${res.YR}
---------------------------------------------------------------------------------
-Name: ${res.NM}                             Roll No.  : ${res.RN}                     
-Father Name : ${res.GN}                     En No.: ${res.EN}                  
-Mother Name : ${res.MN}                    
----------------------------------------------------------------------------------
-Subject                                                 Marks Obtain       
----------------------------------------------------------------------------------
-${res.S1}                         ${res.T1}
-${res.S2}                                          ${res.T2}
-${res.S3}                        ${res.T3}
-${res.S4}                                     ${res.T4}
-${res.S5}        ${res.T5}
-${res.S6}          ${res.T6}
----------------------------------------------------------------------------------
-                             Xth Sem Total : ${res.TOT}
-                             ---------------------
-Sem-I:(${res.SEM_1})   Sem-II:(${res.SEM_2})   Sem-III:(${res.SEM_3})
-Sem-IV:(${res.SEM_4})   Sem-V:(${res.SEM_5})   Sem-VI:(${res.SEM_6})
-Sem-VII:(${res.SEM_7})   Sem-VIII:(${res.SEM_8})   Sem-IX:(${res.SEM_9})
----------------------------------------------------------------------------------
-Result  : ${res.RES}               Grand Total : ${res.GT}
-${res.SE}
+      return `
+      <p>The record of ${res.NM} availiable with ACC is as follows:</p>
+      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
+      <tr><th colspan="3">${res.MRK_HEAD}, ${res.YR}</th></tr>
+      <tr><td colspan="2"><strong>Name:</strong> ${res.NM}</td><td colspan="2"><strong>En No.:</strong> ${res.EN}</td></tr>
+      <tr><td colspan="2"><strong>Father Name:</strong> ${res.GN}</td><td colspan="2"><strong>Roll No.:</strong> ${res.RN}</td></tr>
+      <tr><td colspan="2"><strong>Mother Name:</strong> ${res.MN}</td></tr>
+      <tr><th style="width: 70px;">Paper</th><th>Subject</th><th>Marks Obtained</th></tr> 
+      <tr><td style="width: 70px;">1</td><td>${res.S1}</td><td style="text-align: right";>${res.T1}</td></tr>
+      <tr><td style="width: 70px;">2</td><td>${res.S2}</td><td style="text-align: right";>${res.T2}</td></tr>
+      <tr><td style="width: 70px;">3</td><td>${res.S3}</td><td style="text-align: right";>${res.T3}</td></tr>
+      <tr><td style="width: 70px;">4</td><td>${res.S4}</td><td style="text-align: right";>${res.T4}</td></tr>
+      <tr><td style="width: 70px;">5</td><td>${res.S5}</td><td style="text-align: right";>${res.T5}</td></tr>
+      <tr><td style="width: 70px;">6</td><td>${res.S6}</td><td style="text-align: right";>${res.T6}</td></tr>
+      <tr><td colspan="2" style="text-align: right";><strong>Sem Total :</strong></td><td style="text-align: right";><strong>${res.TOT}</strong></td></tr>
+      <tr>
+      <td colspan="3" >
+      <strong>Sem-I:</strong>
+      (${res.SEM_1})
+      <span style="margin-left: 50px;">
+      <strong>Sem-II:</strong>
+      (${res.SEM_2})
+       <span style="margin-left: 50px;">
+       <strong>Sem-III:</strong>
+      (${res.SEM_3})
+      <span style="margin-left: 50px;">
+      <strong>Sem-IV:</strong>
+      (${res.SEM_4})
+      <span style="margin-left: 50px;">
+      <strong>Sem-V:</strong>
+      (${res.SEM_5})
+      </td>
+      </tr>
+      <tr>
+      <td colspan="3" >
+      <strong>Sem-VI:</strong>
+      (${res.SEM_6})
+      <span style="margin-left: 50px;">
+      <strong>Sem-VII:</strong>
+      (${res.SEM_7})
+       <span style="margin-left: 50px;">
+       <strong>Sem-VIII:</strong>
+      (${res.SEM_8})
+      <span style="margin-left: 50px;">
+      <strong>Sem-IX:</strong>
+      (${res.SEM_9})
+      <span style="margin-left: 50px;">
+      <strong>Sem-X:</strong>
+      (${res.TOT})
+      </td>
+      </tr>
+      <tr><td colspan="3"><strong>Result:</strong> ${res.RES} <span style="margin-left: 350px;"><strong>Grand Total : </strong>${res.GT}</td></tr>
+      <tr><td colspan="3"><strong>Remarks:</strong> ${res.SE}</tr>
+      </table>
+       <p>This is for your kind information and further action at your end.</p>
 
 Thank you, for email and 
 Support ACC Team`;
 
     default:
-      return `The provide data is matched with record. However please co-relate with details :
-
-                           ${res.CC}
---------------------------------------------------------------------------------
-Name: ${res.NM}                            En No.: ${res.EN}
-Father Name : ${res.GN}                    Roll No.  : ${res.RN}
-Mother Name : ${res.MN}
----------------------------------------------------------------------------------
-Subject                                        Marks Obtain
----------------------------------------------------------------------------------
-${res.SB1}                                         ${res.SUB1}
-${res.SB2}                                         ${res.SUB2}
----------------------------------------------------------------------------------
-Part-I:(${res.PM1})         Part-II:(${res.PM2})           Total : ${res.TOT}                               
----------------------------------------------------------------------------------
-Result  : ${res.RES}              Grand Total : ${res.GT}
-${res.SE}
+      return `
+      <p>The record of ${res.NM} availiable with ACC is as follows:</p>
+      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
+      <tr><th colspan="3">${res.CC}, ${res.YR}</th></tr>
+      <tr><td colspan="2"><strong>Name:</strong> ${res.NM}</td><td colspan="2"><strong>En No.:</strong> ${res.EN}</td></tr>
+      <tr><td colspan="2"><strong>Father Name:</strong> ${res.GN}</td><td colspan="2"><strong>Roll No.:</strong> ${res.RN}</td></tr>
+      <tr><td colspan="2"><strong>Mother Name:</strong> ${res.MN}</td></tr>
+      <tr><th style="width: 70px;">Paper</th><th>Subject</th><th>Marks Obtained</th></tr> 
+      <tr><td style="width: 70px;">1</td><td>${res.SB1}</td><td style="text-align: right";>${res.SUB1}</td></tr>
+      <tr><td style="width: 70px;">2</td><td>${res.SB2}</td><td style="text-align: right";>${res.SUB2}</td></tr>
+      <tr>
+      <td colspan="3" >
+      <strong>Part-I:</strong>
+      (${res.PM1})
+      <span style="margin-left: 150px;">
+      <strong>Part-II:</strong>
+      (${res.PM2})
+      <span style="margin-left: 150px;">
+      <strong>Total:</strong>
+      (${res.TOT})
+      </td>
+      </tr>
+      <tr><td colspan="3"><strong>Result:</strong> ${res.RES} <span style="margin-left: 350px;"><strong>Grand Total : </strong>${res.GT}</td></tr>
+      <tr><td colspan="3"><strong>Remarks:</strong> ${res.SE}</tr>
+      </table>
+       <p>This is for your kind information and further action at your end.</p>
 
 Thank you, for email and 
 Support ACC Team`;
@@ -132,16 +168,17 @@ Support ACC Team`;
 
 const sendReplyEmail = async (
   gmail,
-  { from, subject, messageId, threadId, body }
+  { from, subject, messageId, threadId, body, isHtml=true}
 ) => {
   const replySubject = subject.startsWith("Re:") ? subject : `Re: ${subject}`;
-
+  const contentType = isHtml ? "text/html" : "text/plain";
+  
   const mimeMessage =
     `To: ${from}\r\n` +
     `Subject: ${replySubject}\r\n` +
     `In-Reply-To: ${messageId}\r\n` +
     `References: ${messageId}\r\n` +
-    `Content-Type: text/plain; charset="UTF-8"\r\n\r\n` +
+    `Content-Type: ${contentType}; charset="UTF-8"\r\n\r\n` +
     body;
 
   const encodedMessage = Buffer.from(mimeMessage)
@@ -236,6 +273,7 @@ Support ACC Team`
           messageId: messageIdHeader,
           threadId: msgRes.data.threadId,
           body,
+          isHtml:false
         });
         console.log("Skipping reply email.");
         continue;
@@ -285,6 +323,7 @@ Support ACC Team`
                 messageId: messageIdHeader,
                 threadId: msgRes.data.threadId,
                 body,
+                isHtml:false
               });
             } else {
               const studentDb = client.db(CL.COURSE);
@@ -294,7 +333,7 @@ Support ACC Team`
 
               const body = student
                 ? formatMessageByCourse(CL.DB_CL, student)
-                : "NO RECORD FOUND of the given data.\n\nThank you,\nSupport ACC Team";
+                : "<p>NO RECORD FOUND of the given data.\n\nThank you,\nSupport ACC Team</p>";
 
               await sendReplyEmail(gmail, {
                 from,
@@ -302,6 +341,7 @@ Support ACC Team`
                 messageId: messageIdHeader,
                 threadId: msgRes.data.threadId,
                 body,
+                isHtml:true
               });
             }
           } catch (err) {
@@ -336,6 +376,7 @@ Support ACC Team`;
             messageId: messageIdHeader,
             threadId: msgRes.data.threadId,
             body: instructions,
+            isHtml:false
           });
         }
       } else {
@@ -348,6 +389,7 @@ Support ACC Team`;
           messageId: messageIdHeader,
           threadId: msgRes.data.threadId,
           body: warning,
+          isHtml:false
         });
       }
     }
