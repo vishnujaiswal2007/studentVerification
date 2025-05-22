@@ -209,8 +209,34 @@ const listmessages = async (gmail) => {
         console.error(`❌ Failed to mark message as read: ${subject}`, err);
       }
 
-      // Skip replies
+      // Reply to those whose send reply on same email thread
       if ("In-Reply-To" in headerMap || "References" in headerMap) {
+        const body = `Every verification need a fresh email in the follwing format:
+         Subject: VERIFICATION
+      Programme code,
+      Year 
+      Enrolment Number,
+      Roll Number,
+      Grand Total
+Note: 
+1:- All fields are required.
+2:- Verification through e-mail is only for BA, B.Sc. and B.Com Final Year.
+3:- The Programme Code for:
+     BA           : PRA262
+     B.Sc         : PRA270
+     B.Com        : PRA351
+     BALLB(Hons.) : PRC265
+4:- It is requested not to add Signature at the end of the email.
+
+Thank you,
+Support ACC Team`
+        await sendReplyEmail(gmail, {
+          from,
+          subject,
+          messageId: messageIdHeader,
+          threadId: msgRes.data.threadId,
+          body,
+        });
         console.log("Skipping reply email.");
         continue;
       }
@@ -313,7 +339,7 @@ Support ACC Team`;
           });
         }
       } else {
-        const warning = `It is an automated and restricted email verification system. You are an unauthorized to use it. 
+        const warning = `You are an unauthorized user to use it. It is a system generated mail, please don't reply.  
 Thank you,
 Support ACC Team`;
         await sendReplyEmail(gmail, {
