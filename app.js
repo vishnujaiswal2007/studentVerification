@@ -1,6 +1,8 @@
 import express from "express";
 import { google } from "googleapis";
 import { MongoClient } from "mongodb";
+import xlsx from "xlsx";
+import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
 dotenv.config();
@@ -37,6 +39,7 @@ const watchInbox = async (gmail) => {
   //   console.log("📡 Watch response:", res.data);
 };
 
+
 const parseVerificationRequest = (bodyLines) => {
   const [PRG = "", YR = "", EN = "", RN = "", GT = ""] = bodyLines.map((line) =>
     (line || "").trim().toUpperCase()
@@ -46,6 +49,7 @@ const parseVerificationRequest = (bodyLines) => {
 
   return allFields.every(isValid) ? { PRG, YR, EN, RN, GT } : null;
 };
+
 
 const formatMessageByCourse = (courseCode, res) => {
   switch (courseCode) {
@@ -166,13 +170,19 @@ Support ACC Team`;
   }
 };
 
+
+
+
+
+
+
 const sendReplyEmail = async (
   gmail,
-  { from, subject, messageId, threadId, body, isHtml=true}
+  { from, subject, messageId, threadId, body, isHtml = true }
 ) => {
   const replySubject = subject.startsWith("Re:") ? subject : `Re: ${subject}`;
   const contentType = isHtml ? "text/html" : "text/plain";
-  
+
   const mimeMessage =
     `To: ${from}\r\n` +
     `Subject: ${replySubject}\r\n` +
@@ -194,6 +204,52 @@ const sendReplyEmail = async (
       threadId,
     },
   });
+};
+
+const createMimeWithAttachment = (
+  to,
+  subject,
+  threadId,
+  messageId,
+  bodyText,
+  filename,
+  base64Content
+) => {
+  const boundary = "__BOUNDARY__";
+  // const filename = path.basename(filePath);
+  // const fileContent = fs.readFileSync(filePath).toString("base64");
+
+  const messageParts = [
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    `In-Reply-To: ${messageId}`,
+    `References: ${messageId}`,
+    `Thread-Id: ${threadId}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    ``,
+    `--${boundary}`,
+    `Content-Type: text/plain; charset="UTF-8"`,
+    `Content-Transfer-Encoding: 7bit`,
+    ``,
+    bodyText,
+    ``,
+    `--${boundary}`,
+    `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; name="${filename}"`,
+    `Content-Disposition: attachment; filename="${filename}"`,
+    `Content-Transfer-Encoding: base64`,
+    ``,
+    base64Content,
+    `--${boundary}--`,
+  ];
+
+  const mimeMessage = messageParts.join("\r\n");
+
+  return Buffer.from(mimeMessage)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 };
 
 const listmessages = async (gmail) => {
@@ -246,150 +302,295 @@ const listmessages = async (gmail) => {
         console.error(`❌ Failed to mark message as read: ${subject}`, err);
       }
 
-      // Reply to those whose send reply on same email thread
-      if ("In-Reply-To" in headerMap || "References" in headerMap) {
-        const body = `Every verification need a fresh email in the follwing format:
-         Subject: VERIFICATION
-      Programme code,
-      Year 
-      Enrolment Number,
-      Roll Number,
-      Grand Total
-Note: 
-1:- All fields are required.
-2:- Verification through e-mail is only for BA, B.Sc. and B.Com Final Year.
-3:- The Programme Code for:
-     BA           : PRA262
-     B.Sc         : PRA270
-     B.Com        : PRA351
-     BALLB(Hons.) : PRC265
-4:- It is requested not to add Signature at the end of the email.
-
-Thank you,
-Support ACC Team`
-        await sendReplyEmail(gmail, {
-          from,
-          subject,
-          messageId: messageIdHeader,
-          threadId: msgRes.data.threadId,
-          body,
-          isHtml:false
-        });
-        console.log("Skipping reply email.");
-        continue;
-      }
-
-      // console.log("from", from);
-
       if (from === "ACC Verification <verification_counter@allduniv.ac.in>") {
-        //get the text body
-        let body = "";
-        const parts = msgRes.data.payload.parts || [msgRes.data.payload];
+        if (subject === "VERIFICATION") {
+          if ("In-Reply-To" in headerMap || "References" in headerMap) {
+            const body = `Every verification need a fresh email.
+          Thank you,
+          Support ACC Team`;
+            await sendReplyEmail(gmail, {
+              from,
+              subject,
+              messageId: messageIdHeader,
+              threadId: msgRes.data.threadId,
+              body,
+              isHtml: false,
+            });
+            console.log("Not Entertained");
+            continue;
+          } else {
 
-        for (const part of parts) {
-          if (part.mimeType === "text/plain" && part.body?.data) {
-            body = Buffer.from(part.body.data, "base64").toString("utf-8");
-            break;
-          }
-        }
+            const parts = msgRes.data.payload.parts || [msgRes.data.payload];
 
-        const bodyPreview = body.slice(0, 100).trim();
-        const bodyLines = bodyPreview
-          .split("\n")
-          .filter((line) => line.trim() !== "");
+            if (
+              parts?.some(
+                (part) =>
+                  part.filename &&
+                  part.filename.length > 0 &&
+                  part.body?.attachmentId
+              )
+            ){
+            //EXCEL: Reading and reply of excel file as attachment
+            for (const part of parts || []) {
+              if (
+                part.filename &&
+                part.filename.endsWith(".xlsx") &&
+                part.body.attachmentId
+              ) {
+                const attachmentRes =
+                  await gmail.users.messages.attachments.get({
+                    userId: "me",
+                    messageId: msg.id,
+                    id: part.body.attachmentId,
+                  });
 
-        const parsed = parseVerificationRequest(bodyLines);
+                const dataBuffer = Buffer.from(
+                  attachmentRes.data.data,
+                  "base64"
+                );
+                const workbook = xlsx.read(dataBuffer, { type: "buffer" });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = xlsx.utils.sheet_to_json(worksheet);
 
-        if (subject === "VERIFICATION" && parsed) {
-          const { PRG, YR, EN, RN, GT } = parsed;
-          const client = new MongoClient(URL);
+                const client = new MongoClient(URL);
+                await client.connect();
 
-          try {
-            await client.connect();
-            const db = client.db("COURSES");
-            const CL = await db.collection("FINAL").findOne({ PRG_CODE: PRG });
+                const db = client.db("COURSES");
+                const output = [];
 
-            if (!CL) {
-              const body =
-  `Verification can be done only for Programme(s):
-     BA           : PRA262
-     B.Sc         : PRA270
-     B.Com        : PRA351
-     BALLB(Hons.) : PRC265.\n\nThank you,\nSupport ACC Team`;
+                for (let row of jsonData) {
+                  const {
+                    PRG_CODE,
+                    YEAR,
+                    ROL_NUMBER,
+                    ENROLMENT,
+                    NAME,
+                    FATHER_NAME,
+                    MOTHER_NAME,
+                    GRAND_TOTAL,
+                  } = row;
+                  const CL = await db
+                    .collection("FINAL")
+                    .findOne({ PRG_CODE: PRG_CODE });
 
-              await sendReplyEmail(gmail, {
-                from,
-                subject,
-                messageId: messageIdHeader,
-                threadId: msgRes.data.threadId,
-                body,
-                isHtml:false
-              });
-            } else {
-              const studentDb = client.db(CL.COURSE);
-              const student = await studentDb
-                .collection(CL.DB_CL)
-                .findOne({ YR, EN, RN, GT, PDF: "PDF" });
+                  let status = "No Record Found";
+                  if (CL) {
+                    const studentDb = client.db(CL.COURSE);
+                    const qury = {
+                      YR: `${YEAR}`,
+                      RN: `${ROL_NUMBER}`,
+                      EN: `${ENROLMENT}`,
+                      NM: `${NAME}`,
+                      GN: `${FATHER_NAME}`,
+                      MN: `${MOTHER_NAME}`,
+                      GT: `${GRAND_TOTAL}`,
+                      PDF: "PDF",
+                    };
+                    const student = await studentDb
+                      .collection(CL.DB_CL)
+                      .findOne(qury);
+                    if (student) {
+                      status = "Record Matched";
+                      row = {
+                        ...row,
+                        RESULT: student.RES,
+                        SECOND_EXAMINATION: student.SE,
+                        STATUS: status,
+                      };
 
-              const body = student
-                ? formatMessageByCourse(CL.DB_CL, student)
-                : "<p>NO RECORD FOUND of the given data.\n\nThank you,\nSupport ACC Team</p>";
+                      output.push(row);
+                    } else {
+                      row = {
+                        ...row,
+                        RESULT: "NA",
+                        SECOND_EXAMINATION: "NA",
+                        STATUS: status,
+                      };
 
-              await sendReplyEmail(gmail, {
-                from,
-                subject,
-                messageId: messageIdHeader,
-                threadId: msgRes.data.threadId,
-                body,
-                isHtml:true
-              });
-            }
-          } catch (err) {
-            console.error("Error:", err);
-          } finally {
-            await client.close();
+                      output.push(row);
+                    }
+                  } else {
+                    row = {
+                      ...row,
+                      RESULT: "NA",
+                      SECOND_EXAMINATION: "NA",
+                      STATUS: status,
+                      REMARK: "Program Code does not Exist",
+                    };
+
+                    output.push(row);
+                  }
+                }
+
+                await client.close();
+                const updatedSheet = xlsx.utils.json_to_sheet(output);
+                const updatedWorkbook = xlsx.utils.book_new();
+                xlsx.utils.book_append_sheet(
+                  updatedWorkbook,
+                  updatedSheet,
+                  sheetName
+                );
+                // const updatedFilePath = `./updated_${Date.now()}.xlsx`;
+                // xlsx.writeFile(updatedWorkbook, updatedFilePath);
+
+                const fileBuffer = xlsx.write(updatedWorkbook, {
+                  type: "buffer",
+                  bookType: "xlsx",
+                });
+                const base64Excel = fileBuffer.toString("base64");
+
+                // 📤 Send reply with attachment
+                const fileName = `updated_${Date.now()}.xlsx`;
+                const rawMime = createMimeWithAttachment(
+                  from,
+                  `Re: ${subject}`,
+                  msgRes.data.threadId,
+                  messageIdHeader,
+                  "Please find the updated verification results in the attached Excel file.",
+                  fileName,
+                  base64Excel
+                );
+
+                await gmail.users.messages.send({
+                  userId: "me",
+                  requestBody: {
+                    raw: rawMime,
+                    threadId: msgRes.data.threadId,
+                  },
+                });
+
+                console.log("✅ Replied with updated Excel file.");
+                break; // stop after first matching Excel
+              }
+              }} else {
+                let body = "";
+                for (const part of parts) {
+                  if (part.mimeType === "text/plain" && part.body?.data) {
+                    body = Buffer.from(part.body.data, "base64").toString("utf-8");
+                    break;
+                  }
+                }
+                // console.log("Body Message is ", body)
+                const bodyPreview = body.slice(0, 100).trim();
+                const bodyLines = bodyPreview
+                  .split("\n")
+                  .filter((line) => line.trim() !== "");
+
+                const parsed = parseVerificationRequest(bodyLines);
+
+                if (subject === "VERIFICATION" && parsed) {
+                  const { PRG, YR, EN, RN, GT } = parsed;
+                  const client = new MongoClient(URL);
+
+                  try {
+                    await client.connect();
+                    const db = client.db("COURSES");
+                    const CL = await db
+                      .collection("FINAL")
+                      .findOne({ PRG_CODE: PRG });
+
+                    if (!CL) {
+                      const body = `Verification can be done only for Programme(s):
+                     BA           : PRA262
+                     B.Sc         : PRA270
+                     B.Com        : PRA351
+                     BALLB(Hons.) : PRC265.\n\nThank you,\nSupport ACC Team`;
+
+                      await sendReplyEmail(gmail, {
+                        from,
+                        subject,
+                        messageId: messageIdHeader,
+                        threadId: msgRes.data.threadId,
+                        body,
+                        isHtml: false,
+                      });
+                    } else {
+                      const studentDb = client.db(CL.COURSE);
+                      const student = await studentDb
+                        .collection(CL.DB_CL)
+                        .findOne({ YR, EN, RN, GT, PDF: "PDF" });
+
+                      const body = student
+                        ? formatMessageByCourse(CL.DB_CL, student)
+                        : "<p>NO RECORD FOUND of the given data.\n\nThank you,\nSupport ACC Team</p>";
+
+                      await sendReplyEmail(gmail, {
+                        from,
+                        subject,
+                        messageId: messageIdHeader,
+                        threadId: msgRes.data.threadId,
+                        body,
+                        isHtml: true,
+                      });
+                    }
+                  } catch (err) {
+                    console.error("Error:", err);
+                  } finally {
+                    await client.close();
+                  }
+                }
+              }
           }
         } else {
           const instructions = `The data for Verification should be in following format:
-    Subject: VERIFICATION
-      Programme code,
-      Year 
-      Enrolment Number,
-      Roll Number,
-      Grand Total
-Note: 
-1:- All fields are required.
-2:- Verification through e-mail is only for BA, B.Sc. and B.Com Final Year.
-3:- The Programme Code for:
-     BA           : PRA262
-     B.Sc         : PRA270
-     B.Com        : PRA351
-     BALLB(Hons.) : PRC265
-4:- Please send fresh email with Subject: VERIFICATION and details in capital letter and in sequence as detailed.
-5:- It is requested not to add Signature at the end of the email.
+        Subject: VERIFICATION
+          Programme code,
+          Year 
+          Enrolment Number,
+          Roll Number,
+          Grand Total
+    Note: (for Single Verification)
+    1:- All fields are required.
+    2:- Verification through e-mail is only for BA, B.Sc. and B.Com Final Year.
+    3:- The Programme Code for:
+         BA           : PRA262
+         B.Sc         : PRA270
+         B.Com        : PRA351
+         BALLB(Hons.) : PRC265
+    4:- Please send fresh email with Subject: VERIFICATION and details in capital letter and in sequence as detailed.
+    5:- It is requested not to add Signature at the end of the email.
+    Note:(For Bulk Verification)
+    1:- Kindly download the attached Excel Sheet.
+    2;- Fill all the details.
+    3:- All details are necessary
+    
+    Thank you,
+    Support ACC Team`;
 
-Thank you,
-Support ACC Team`;
-          await sendReplyEmail(gmail, {
+          const filePath = "./VERIFICATION.xlsx"; // your local Excel file
+          const filename = path.basename(filePath);
+          const fileContent = fs.readFileSync(filePath).toString("base64");
+
+          const rawMime = createMimeWithAttachment(
             from,
-            subject,
-            messageId: messageIdHeader,
-            threadId: msgRes.data.threadId,
-            body: instructions,
-            isHtml:false
+            `Re: ${subject}`,
+            msgRes.data.threadId,
+            messageIdHeader,
+            instructions,
+            filename,
+            fileContent
+          );
+
+          await gmail.users.messages.send({
+            userId: "me",
+            requestBody: {
+              raw: rawMime,
+              threadId: msgRes.data.threadId, // ensures it's part of the same conversation
+            },
           });
         }
       } else {
         const warning = `You are an unauthorized user to use it. It is a system generated mail, please don't reply.  
-Thank you,
-Support ACC Team`;
+        Thank you,
+        Support ACC Team`;
         await sendReplyEmail(gmail, {
           from,
           subject,
           messageId: messageIdHeader,
           threadId: msgRes.data.threadId,
           body: warning,
-          isHtml:false
+          isHtml: false,
         });
       }
     }
