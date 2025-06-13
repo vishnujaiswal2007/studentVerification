@@ -51,100 +51,8 @@ const parseVerificationRequest = (bodyLines) => {
 };
 
 
-const parseVerificationRequestExcel = (rawRow) => {
-  const fieldOrder = [
-    "PRG_CODE",
-    "YEAR",
-    "ENROLMENT",
-    "ROL_NUMBER",
-    "NAME",
-    "FATHER_NAME",
-    "MOTHER_NAME",
-    "GRAND_TOTAL",
-  ];
-
-  const rowArray = fieldOrder.map((key) =>
-    (rawRow[key] || "").toString().trim().toUpperCase()
-  );
-
-  const [
-    PRG_CODE,
-    YEAR,
-    ENROLMENT,
-    ROL_NUMBER,
-    NAME,
-    FATHER_NAME,
-    MOTHER_NAME,
-    GRAND_TOTAL,
-  ] = rowArray;
-
-  const allFields = rowArray;
-  const isValid = (val) => val !== undefined && val !== null && val !== "";
-
-  return allFields.every(isValid)
-    ? {
-        PRG_CODE,
-        YEAR,
-        ENROLMENT,
-        ROL_NUMBER,
-        NAME,
-        FATHER_NAME,
-        MOTHER_NAME,
-        GRAND_TOTAL,
-      }
-    : null;
-};
-
-
-
-
-
 const formatMessageByCourse = (courseCode, res) => {
   switch (courseCode) {
-    
-      case "LLBH6":
-  return `
-     <p>The record of ${res.NM} availiable with ACC is as follows:</p>
-      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
-      <tr><th colspan="3">${res.MRK_HEAD}, ${res.YR}</th></tr>
-      <tr><td colspan="2"><strong>Name:</strong> ${res.NM}</td><td colspan="2"><strong>En No.:</strong> ${res.EN}</td></tr>
-      <tr><td colspan="2"><strong>Father Name:</strong> ${res.GN}</td><td colspan="2"><strong>Roll No.:</strong> ${res.RN}</td></tr>
-      <tr><td colspan="2"><strong>Mother Name:</strong> ${res.MN}</td></tr>
-      <tr><th style="width: 70px;">Paper</th><th>Subject</th><th>Marks Obtained</th></tr> 
-      <tr><td style="width: 70px;">1</td><td>${res.S1}</td><td style="text-align: right";>${res.T1}</td></tr>
-      <tr><td style="width: 70px;">2</td><td>${res.S2}</td><td style="text-align: right";>${res.T2}</td></tr>
-      <tr><td style="width: 70px;">3</td><td>${res.S3}</td><td style="text-align: right";>${res.T3}</td></tr>
-      <tr><td style="width: 70px;">4</td><td>${res.S4}</td><td style="text-align: right";>${res.T4}</td></tr>
-      <tr><td style="width: 70px;">5</td><td>${res.S5}</td><td style="text-align: right";>${res.T5}</td></tr>
-      <tr><td style="width: 70px;">6</td><td>${res.S6}</td><td style="text-align: right";>${res.T6}</td></tr>
-      <tr><td colspan="2" style="text-align: right";><strong>Sem Total :</strong></td><td style="text-align: right";><strong>${res.TOT}</strong></td></tr>
-      <tr>
-      <td colspan="3" >
-      <strong>Sem-I:</strong>
-      (${res.SEM_1})
-      <span style="margin-left: 50px;">
-      <strong>Sem-II:</strong>
-      (${res.SEM_2})
-       <span style="margin-left: 50px;">
-       <strong>Sem-III:</strong>
-      (${res.SEM_3})
-      <span style="margin-left: 50px;">
-      <strong>Sem-IV:</strong>
-      (${res.SEM_4})
-      <span style="margin-left: 50px;">
-      <strong>Sem-V:</strong>
-      (${res.SEM_5})
-      </td>
-      </tr>
-      
-      <tr><td colspan="3"><strong>Result:</strong> ${res.RES} <span style="margin-left: 350px;"><strong>Grand Total : </strong>${res.GT}</td></tr>
-      <tr><td colspan="3"><strong>Remarks:</strong> ${res.SE}</tr>
-      </table>
-       <p>This is for your kind information and further action at your end.</p>
-
-Thank you, for email and 
-Support ACC Team`;
-  
     case "BCOM3":
 return `
     <p>The record of ${res.NM} availiable with ACC is as follows:</p>
@@ -422,10 +330,7 @@ const listmessages = async (gmail) => {
                   part.body?.attachmentId
               )
             ){
-          
-          
-          
-              //EXCEL: Reading and reply of excel file as attachment
+            //EXCEL: Reading and reply of excel file as attachment
             for (const part of parts || []) {
               if (
                 part.filename &&
@@ -454,14 +359,7 @@ const listmessages = async (gmail) => {
                 const db = client.db("COURSES");
                 const output = [];
 
-                for (let rawRow of jsonData) {
-
-                  let row = parseVerificationRequestExcel(rawRow)
-
-                  let status = "Do verify from Administrative Computer Center (ACC)";
-
-                  if (row) {
-
+                for (let row of jsonData) {
                   const {
                     PRG_CODE,
                     YEAR,
@@ -472,13 +370,11 @@ const listmessages = async (gmail) => {
                     MOTHER_NAME,
                     GRAND_TOTAL,
                   } = row;
-
-
                   const CL = await db
                     .collection("FINAL")
                     .findOne({ PRG_CODE: PRG_CODE });
 
-                  
+                  let status = "No Record Found";
                   if (CL) {
                     const studentDb = client.db(CL.COURSE);
                     const qury = {
@@ -525,18 +421,6 @@ const listmessages = async (gmail) => {
 
                     output.push(row);
                   }
-                  }else{
-
-                    row = {
-                      ...rawRow,
-                      RESULT: "NA",
-                      SECOND_EXAMINATION: "NA",
-                      STATUS: status,
-                      REMARK: "All fields are necessary",
-                    };
-
-                    output.push(row);
-                  }
                 }
 
                 await client.close();
@@ -579,11 +463,7 @@ const listmessages = async (gmail) => {
                 console.log("✅ Replied with updated Excel file.");
                 break; // stop after first matching Excel
               }
-              }} 
-              
-              //verification by simple message
-              
-              else {
+              }} else {
                 let body = "";
                 for (const part of parts) {
                   if (part.mimeType === "text/plain" && part.body?.data) {
@@ -615,9 +495,7 @@ const listmessages = async (gmail) => {
                      BA           : PRA262
                      B.Sc         : PRA270
                      B.Com        : PRA351
-                     BALLB(Hons.) : PRC265
-                     LLB(Hons.)   : PRC272
-                     .\n\nThank you,\nSupport ACC Team`;
+                     BALLB(Hons.) : PRC265.\n\nThank you,\nSupport ACC Team`;
 
                       await sendReplyEmail(gmail, {
                         from,
@@ -635,7 +513,7 @@ const listmessages = async (gmail) => {
 
                       const body = student
                         ? formatMessageByCourse(CL.DB_CL, student)
-                        : "<p>Do verify from Administrative Computer Center (ACC).\n\nThank you,\nSupport ACC Team</p>";
+                        : "<p>NO RECORD FOUND of the given data.\n\nThank you,\nSupport ACC Team</p>";
 
                       await sendReplyEmail(gmail, {
                         from,
@@ -656,38 +534,26 @@ const listmessages = async (gmail) => {
           }
         } else {
           const instructions = `The data for Verification should be in following format:
-
         Subject: VERIFICATION
           Programme code,
           Year 
           Enrolment Number,
           Roll Number,
           Grand Total
-
-
     Note: (for Single Verification)
     1:- All fields are required.
-    2:- Verification through e-mail is only for Final Year/Semster.
-    3:- Please send fresh email with Subject: VERIFICATION.
-    4:- All details should be in capital letter and in-sequence as detailed.
+    2:- Verification through e-mail is only for BA, B.Sc. and B.Com Final Year.
+    3:- The Programme Code for:
+         BA           : PRA262
+         B.Sc         : PRA270
+         B.Com        : PRA351
+         BALLB(Hons.) : PRC265
+    4:- Please send fresh email with Subject: VERIFICATION and details in capital letter and in sequence as detailed.
     5:- It is requested not to add Signature at the end of the email.
-
-
     Note:(For Bulk Verification)
     1:- Kindly download the attached Excel Sheet.
     2;- Fill all the details.
-    3:- All details are necessary and in CAPITAL letter.
-    4:- Details should be in prescribed EXCEL format.
-    5:- Compose a new email with Subject: VERIFICATION.
-    6:- Attach the Excel sheet (having details)
-
-
-    The Programme Code are:
-         BA                       : PRA262
-         B.Sc                   : PRA270
-         B.Com                : PRA351
-         BALLB(Hons.)     : PRC265
-         LLB(Hons.)         : PRC272
+    3:- All details are necessary
     
     Thank you,
     Support ACC Team`;
